@@ -1,0 +1,169 @@
+1-a
+def get_next_target(page):
+    start_link = page.find('<a href=')
+    if start_link == -1:
+        return None, 0
+    start_quote = page.find('"', start_link)
+    end_quote = page.find('"', start_quote + 1)
+    url = page[start_quote + 1:end_quote]
+    return url, end_quote
+
+
+def get_all_links(page):
+  links=[]
+  while True:
+    url,endpos=get_next_target(page)
+    if url:
+      links.append(url)
+      page=page[endpos:]
+    else:
+      break
+  return links
+
+def add_page_to_index(index,url,content):
+  words=content.split()
+  for word in words:
+    add_to_index(index,word,url)
+
+def add_to_index(index,keyword,url):
+    if keyword in index:
+        index[keyword].append(url)
+    else:
+      index[keyword]=[url]
+
+def lookup(index,keyword):
+  if keyword in index:
+    return index[keyword]
+  else:
+    return None
+
+
+def getPage(url):
+  try:
+    import urllib.request
+    page=urllib.request.urlopen(url).read()
+    return page.decode("utf−8")
+  except:
+    return " "
+
+
+def union(p,q):
+  for e in q:
+    if e not in p:
+      p.append(e)
+
+def crawl_web(seed):
+  tocrawl=[seed]
+  crawled=[]
+  index={}
+  graph={}
+
+  while tocrawl:
+    page=tocrawl.pop()
+    if page not in crawled:
+      content=getPage(page)
+      add_page_to_index(index,page,content)
+      outlinks=get_all_links(content)
+      graph[page]=outlinks
+      union(tocrawl,get_all_links(content))
+      crawled.append(page)
+
+  return index,graph
+
+#1-b
+
+def all_graph(graph):
+  result=[]
+  result.append(f"The graph has {len(graph)} elements. These are: ")
+  start=1
+  for page in graph:
+    outlinks=graph[page]
+    result.append(f"{start}. [{page}]:{outlinks}")
+    start +=1
+  return result
+
+given_seed_page="https://searchengineplaces.com.tr/"
+
+index1,graph1=crawl_web(given_seed_page)
+answer=all_graph(graph1)
+
+for line in answer:
+  print(line)
+
+#1-c
+
+
+def computeRanks(graph):
+  d=0.8
+  N=len(graph)
+  numloops=10
+  ranks= {}
+
+  for page in graph:
+    ranks[page]=1/N
+
+  for i in range(numloops):
+    newranks={}
+
+    for page in graph:
+      newrank=(1-d)/N
+      for node in graph:
+        if page in graph[node]:
+          newrank += d*( ranks[node] /len(graph[node]))
+      newranks[page]=newrank
+    ranks=newranks
+  return newranks
+
+def print_ranks(ranks):
+  result=[]
+  for page in ranks:
+    rank=ranks[page]
+    result.append(f"The rank of the page {page}: {rank:.4f}")
+  return result
+
+ranking=computeRanks(graph1)
+answer2=print_ranks(ranking)
+
+for line2 in answer2:
+  print(line2)
+
+#1-d
+
+def rankedLookup(index,key,graph):
+  ranks=computeRanks(graph)
+  sorted_pages=sorted(ranks.items(), key=lambda x: x[1], reverse=True)
+
+  results=[]
+  multiplicated=[]
+  for page ,rank in sorted_pages:
+    if key in page and rank not in multiplicated:
+      results.append(page)
+      multiplicated.append(rank)
+  return results
+
+#1-e
+
+def lookup(index,key,graph=False,computing_procedure=False):
+  if  graph== False and  computing_procedure ==False :              #standard lookup
+    if key in index:
+     return index[key]
+    else:
+     return None
+
+  elif graph !=False and computing_procedure !=False :
+    ranks=computing_procedure(graph)
+    sorted_pages=sorted(ranks.items(), key=lambda x: x[1] , reverse=True)
+
+    results=[]
+    multiplicated=[]
+
+
+    for page ,rank in sorted_pages:
+      if key in page and rank not in multiplicated:
+        results.append(page)
+        multiplicated.append(rank)
+
+    return results
+  elif graph !=False or computing_procedure !=False:
+    print(" !Invalid Input Combination ! Please check the inputs ")
+
